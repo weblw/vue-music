@@ -13,9 +13,8 @@
         <div class="play"
              v-show="songs.length>0"
              ref="playBtn">
-          <i class="icon-play">
-            <span class="text">随机播放全部</span>
-          </i>
+          <i class="icon-play"></i>
+          <span class="text">随机播放全部</span>
         </div>
       </div>
       <div class="filter"
@@ -30,7 +29,7 @@
             class="list"
             ref="list">
       <div class="song-list-wrapper">
-        <song-list :songs='songs'></song-list>
+        <song-list :songs='songs' @select='selectItem'></song-list>
       </div>
       <div class="loading-container"
            v-show="!songs.length">
@@ -45,6 +44,7 @@ import Scroll from 'base/scroll/scroll'
 import SongList from 'base/song-list/song-list'
 import Loading from 'base/loading/loading'
 import { prefixStyle } from 'common/js/dom'
+import { mapActions } from 'vuex'
 
 const RESOLVED_HEIGHT = 40
 const transform = prefixStyle('transform')
@@ -128,7 +128,16 @@ export default {
     },
     back () {
       this.$router.back()
-    }
+    },
+    selectItem(item, index) {
+      this.selectPlay({
+        list: this.songs,
+        index
+      })
+    },
+    ...mapActions([
+      'selectPlay'
+    ])
   }
 }
 </script>
