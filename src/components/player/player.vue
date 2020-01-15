@@ -36,19 +36,31 @@
           </div>
         </div>
         <div class="bottom">
+          <div class="progress-wrapper">
+            <span class="time time-l">{{format(currentTime)}}</span>
+            <div class="progress-bar-wrapper">
+              <progress-bar :percent='percent' @percentChange='onProgressBarChange'></progress-bar>
+            </div>
+            <span class="time time-r">{{format(currentSong.duration)}}</span>
+          </div>
           <div class="operators">
             <div class="icon i-left">
               <i class="icon-sequence"></i>
             </div>
-            <div class="icon i-left">
-              <i class="icon-prev"></i>
+            <div class="icon i-left"
+                 :class='disableCls'>
+              <i class="icon-prev"
+                 @click="prev"></i>
             </div>
-            <div class="icon i-center">
+            <div class="icon i-center"
+                 :class='disableCls'>
               <i :class="playIcon"
                  @click='togglePlaying'></i>
             </div>
-            <div class="icon i-right">
-              <i class="icon-next"></i>
+            <div class="icon i-right"
+                 :class='disableCls'>
+              <i class="icon-next"
+                 @click="next"></i>
             </div>
             <div class="icon i-right">
               <i class="icon icon-not-favorite"></i>
@@ -86,7 +98,10 @@
       </div>
     </transition>
     <audio :src='currentSong.url'
-           ref='audio'></audio>
+           ref='audio'
+           @playing="ready"
+           @error='error'
+           @timeupdate="updateTime"></audio>
   </div>
 </template>
 
@@ -94,6 +109,7 @@
 import { mapGetters, mapMutations } from 'vuex'
 import animations from 'create-keyframe-animation'
 import { prefixStyle } from 'common/js/dom'
+import ProgressBar from 'base/progress-bar/progress-bar'
 
 const transform = prefixStyle('transform')
 
@@ -101,8 +117,12 @@ export default {
   name: '',
   data () {
     return {
-
+      songReady: false,
+      currentTime: 0
     }
+  },
+  components: {
+    ProgressBar
   },
   computed: {
     playIcon () {
@@ -114,11 +134,18 @@ export default {
     cdCls () {
       return this.playing ? 'play' : 'pause'
     },
+    disableCls () {
+      return this.songReady ? '' : 'disable'
+    },
+    percent () {
+      return this.currentTime / this.currentSong.duration
+    },
     ...mapGetters([
       'fullScreen',
       'playList',
       'currentSong',
-      'playing'
+      'playing',
+      'currentIndex'
     ])
   },
   watch: {
@@ -183,7 +210,67 @@ export default {
       this.$refs.cdWrapper.style[transform] = ''
     },
     togglePlaying () {
+      if (!this.songReady) {
+        return
+      }
       this.setPlayingSate(!this.playing)
+    },
+    prev () {
+      if (!this.songReady) {
+        return
+      }
+      let index = this.currentIndex - 1
+      if (index === -1) {
+        index = this.playList.length - 1
+      }
+      this.setCurrentINdex(index)
+      if (!this.playing) {
+        this.togglePlaying()
+      }
+      this.songReady = false
+    },
+    next () {
+      if (!this.songReady) {
+        return
+      }
+      let index = this.currentIndex + 1
+      if (index === this.playList.length) {
+        index = 0
+      }
+      this.setCurrentINdex(index)
+      if (!this.playing) {
+        this.togglePlaying()
+      }
+      this.songReady = false
+    },
+    ready () {
+      this.songReady = true
+    },
+    error () {
+      this.songReady = true
+    },
+    updateTime (e) {
+      this.currentTime = e.target.currentTime
+    },
+    format (interval) {
+      interval = interval | 0
+      const minute = interval / 60 | 0
+      const secound = this._pad(interval % 60)
+      return `${minute}:${secound}`
+    },
+    onProgressBarChange(percent) {
+      this.$refs.audio.currentTime = this.currentSong.duration * percent
+      if (!this.playing) {
+        this.togglePlaying()
+      }
+    },
+    _pad (num, n = 2) {
+      let len = num.toString().length
+      if (len < n) {
+        num = '0' + num
+        len++
+      }
+      return num
     },
     _getPosAndAcale () {
       const targetWidth = 40
@@ -198,7 +285,8 @@ export default {
     },
     ...mapMutations({
       setFullScreen: 'SET_FULL_SCREEN',
-      setPlayingSate: 'SET_PLAYING_STATE'
+      setPlayingSate: 'SET_PLAYING_STATE',
+      setCurrentINdex: 'SET_CURRENT_INDEX'
     })
   }
 }
