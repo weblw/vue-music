@@ -1,9 +1,13 @@
 import {
-  getSongsUrl
+  getSongsUrl,
+  getLyric
 } from 'api/song'
 import {
   ERR_OK
 } from 'api/config'
+import {
+  Base64
+} from 'js-base64'
 
 export default class Song {
   constructor({
@@ -25,17 +29,37 @@ export default class Song {
     this.image = image
     this.url = url
   }
+
+  getLyric() {
+    if (this.lyric) {
+      return Promise.resolve(this.lyric)
+    }
+    return new Promise((resolve, reject) => {
+      getLyric(this.mid).then(res => {
+        if (res.code === ERR_OK) {
+          this.lyric = Base64.decode(res.lyric)
+          resolve(this.lyric)
+        } else {
+          reject(Error('no lyric'))
+        }
+      })
+    })
+  }
 }
 
 export function isValidMusic(musicData) {
-  return musicData.songid && musicData.albummid && (!musicData.pay || musicData.pay.payalbumprice === 0)
+  return (
+    musicData.songid &&
+    musicData.albummid &&
+    (!musicData.pay || musicData.pay.payalbumprice === 0)
+  )
 }
 
 export function processSongsUrl(songs) {
   if (!songs.length) {
     return Promise.resolve(songs)
   }
-  return getSongsUrl(songs).then((res) => {
+  return getSongsUrl(songs).then(res => {
     if (res.code === ERR_OK) {
       let midUrlInfo = res.url_mid.data.midurlinfo
       midUrlInfo.forEach((info, index) => {
