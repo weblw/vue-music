@@ -353,9 +353,11 @@ export default {
       }
     },
     ready () {
+      clearTimeout(this.timer)
       this.songReady = true
     },
     error () {
+      clearTimeout(this.timer)
       this.songReady = true
     },
     updateTime (e) {
