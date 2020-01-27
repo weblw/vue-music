@@ -22,7 +22,8 @@
       <loading v-show="hasMore"
                title=""></loading>
     </ul>
-    <div class='no-result-wrapper' v-show='!hasMore && !result.length'>
+    <div class='no-result-wrapper'
+         v-show='!hasMore && !result.length'>
       <no-result title='抱歉，暂无搜索结果'></no-result>
     </div>
   </scroll>
@@ -73,7 +74,10 @@ export default {
     }
   },
   methods: {
-    listScroll() {
+    refresh () {
+      this.$refs.suggest.refresh()
+    },
+    listScroll () {
       this.$emit('listScroll')
     },
     selectItem (item) {
@@ -89,6 +93,7 @@ export default {
       } else {
         this.insertSong(item)
       }
+      this.$emit('select')
     },
     getDisplayName (item) {
       if (item.type === TYPE_SINGER) {
@@ -104,58 +109,58 @@ export default {
         return 'icon-music'
       }
     },
-    search() {
-        this.page = 1
-        this.hasMore = true
-        this.$refs.suggest.scrollTo(0, 0)
-        search(this.query, this.page, this.showSinger, perpage).then((res) => {
-          if (res.code === ERR_OK) {
-            this._genResult(res.data).then((result) => {
-              this.result = result
-            })
-            this._checkMore(res.data)
-          }
-        })
-      },
-      searchMore() {
-        if (!this.hasMore) {
-          return
+    search () {
+      this.page = 1
+      this.hasMore = true
+      this.$refs.suggest.scrollTo(0, 0)
+      search(this.query, this.page, this.showSinger, perpage).then((res) => {
+        if (res.code === ERR_OK) {
+          this._genResult(res.data).then((result) => {
+            this.result = result
+          })
+          this._checkMore(res.data)
         }
-        this.page++
-        search(this.query, this.page, this.showSinger, perpage).then((res) => {
-          if (res.code === ERR_OK) {
-            this._genResult(res.data).then((result) => {
-              this.result = this.result.concat(result)
-            })
-            this._checkMore(res.data)
-          }
-        })
-      },
+      })
+    },
+    searchMore () {
+      if (!this.hasMore) {
+        return
+      }
+      this.page++
+      search(this.query, this.page, this.showSinger, perpage).then((res) => {
+        if (res.code === ERR_OK) {
+          this._genResult(res.data).then((result) => {
+            this.result = this.result.concat(result)
+          })
+          this._checkMore(res.data)
+        }
+      })
+    },
     _checkMore (data) {
       const song = data.song
       if (!song.list.length || (song.curnum + song.curpage * perpage) >= song.totalnum) {
         this.hasMore = false
       }
     },
-    _genResult(data) {
-        let ret = []
-        if (data.zhida && data.zhida.singerid && this.page === 1) {
-          ret.push({...data.zhida, ...{type: TYPE_SINGER}})
-        }
-        return processSongsUrl(this._normalizeSongs(data.song.list)).then((songs) => {
-          ret = ret.concat(songs)
-          return ret
-        })
-      },
-    _normalizeSongs(list) {
-        let ret = []
-        list.forEach((musicData) => {
-          if (isValidMusic(musicData)) {
-            ret.push(createSong(musicData))
-          }
-        })
+    _genResult (data) {
+      let ret = []
+      if (data.zhida && data.zhida.singerid && this.page === 1) {
+        ret.push({ ...data.zhida, ...{ type: TYPE_SINGER } })
+      }
+      return processSongsUrl(this._normalizeSongs(data.song.list)).then((songs) => {
+        ret = ret.concat(songs)
         return ret
-      },
+      })
+    },
+    _normalizeSongs (list) {
+      let ret = []
+      list.forEach((musicData) => {
+        if (isValidMusic(musicData)) {
+          ret.push(createSong(musicData))
+        }
+      })
+      return ret
+    },
     ...mapMutations({
       setSinger: 'SET_SINGER'
     }),

@@ -2,26 +2,53 @@
   <div class="search">
     <div class="search-box-wrapper">
       <search-box ref='searchBox'
-                  @query='onQUeryChange'></search-box>
+                  @query='onQueryChange'></search-box>
     </div>
     <div class="shortcut-wrapper"
+         ref='shortcutWrapper'
          v-show="!query">
-      <div class="shortcut">
-        <div class="hot-key">
-          <h1 class="title">热门搜索</h1>
-          <ul>
-            <li class="item"
-                @click="addQuery(item.k)"
-                v-for="item in hotKey"
-                :key="item.n">{{item.k}}</li>
-          </ul>
+      <scroll class="shortcut"
+              ref='shortcut'
+              :refreshDelay='refreshDelay'
+              :data='shortcut'>
+        <div>
+          <div class="hot-key">
+            <h1 class="title">热门搜索</h1>
+            <ul>
+              <li class="item"
+                  @click="addQuery(item.k)"
+                  v-for="item in hotKey"
+                  :key="item.n">{{item.k}}</li>
+            </ul>
+          </div>
+          <div class='search-history'
+               v-show='searchHistory.length'>
+            <h1 class='title'>
+              <span class='text'>搜索历史</span>
+              <span class='clear'
+                    @click="showConfirm">
+                <i class='icon-clear'></i>
+              </span>
+            </h1>
+            <search-list :searches='searchHistory'
+                         @select="addQuery"
+                         @delete='deleteOne'></search-list>
+          </div>
         </div>
-      </div>
+      </scroll>
     </div>
     <div class="search-result"
+         ref='searchResult'
          v-show="query">
-      <suggest :query='query' @listScroll='blurInput'></suggest>
+      <suggest :query='query'
+               ref='suggest'
+               @listScroll='blurInput'
+               @select='saveSearch'></suggest>
     </div>
+    <confirm ref='confirm'
+             text='是否清空所有搜索历史？'
+             confirmBtnText='清空'
+             @confirm='deleteAll'></confirm>
     <router-view></router-view>
   </div>
 </template>
@@ -31,12 +58,21 @@ import SearchBox from 'base/search-box/search-box'
 import { getHotKey } from 'api/search'
 import { ERR_OK } from 'api/config'
 import Suggest from 'components/suggest/suggest'
+import { mapActions } from 'vuex'
+import SearchList from 'base/search-list/search-list'
+import Scroll from 'base/scroll/scroll'
+import Confirm from 'base/confirm/confirm'
+import { playlistMixin, searchMixin } from 'common/js/mixin'
 
 export default {
   name: 'search',
+  mixins: [playlistMixin, searchMixin],
   components: {
     SearchBox,
-    Suggest
+    Suggest,
+    SearchList,
+    Scroll,
+    Confirm
   },
   data () {
     return {
@@ -44,19 +80,41 @@ export default {
       query: ''
     }
   },
+  computed: {
+    shortcut () {
+      return this.hotKey.concat(this.searchHistory)
+    }
+  },
   created () {
     this._getHotKey()
   },
+  watch: {
+    query (newQuery) {
+      if (!newQuery) {
+        setTimeout(() => {
+          this.$refs.shortcut.refresh()
+        }, 20)
+      }
+    }
+  },
   methods: {
-    blurInput() {
-      this.$refs.searchBox.blur()
+    handlePlayList (playlist) {
+      const bottom = playlist.length > 0 ? '60px' : ''
+      this.$refs.shortcutWrapper.style.bottom = bottom
+      this.$refs.shortcut.refresh()
+      this.$refs.searchResult.style.bottom = bottom
+      this.$refs.suggest.refresh()
     },
-    onQUeryChange (query) {
-      this.query = query
+    showConfirm () {
+      this.$refs.confirm.show()
     },
-    addQuery (query) {
-      console.log(query)
-      this.$refs.searchBox.setQuery(query)
+
+    deleteOne (item) {
+      console.log(item)
+      this.deleteSearchHistory(item)
+    },
+    deleteAll () {
+      this.clearSearchHistory()
     },
     _getHotKey () {
       getHotKey().then(res => {
@@ -64,7 +122,10 @@ export default {
           this.hotKey = res.data.hotkey.slice(0, 10)
         }
       })
-    }
+    },
+    ...mapActions([
+      'clearSearchHistory'
+    ])
   }
 }
 </script>
